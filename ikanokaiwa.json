@@ -1,0 +1,23 @@
+[
+  {
+    "server": "Server ID"
+  },
+  
+  {
+    "channel": "ikanokaiwa1 Channel ID",
+    "sendto2": "0",
+    "sendto3": "1"
+  },
+
+  {
+    "channel": "ikanokaiwa2 Channel ID",
+    "sendto1": "0",
+    "sendto3": "1"
+  },
+
+  {
+    "channel": "ikanokaiwa3 Channel ID",
+    "sendto1": "1",
+    "sendto2": "1"
+  }
+]

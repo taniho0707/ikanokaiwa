@@ -1,0 +1,26 @@
+{
+  "name": "ikanokaiwa",
+  "version": "0.0.1",
+  "description": "ikanokaiwa",
+  "main": "ikanokaiwa.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/taniho0707/ikanokaiwa.git"
+  },
+  "keywords": [
+    "discord"
+  ],
+  "author": "taniho0707",
+  "license": "GPL-2.0",
+  "bugs": {
+    "url": "https://github.com/taniho0707/ikanokaiwa/issues"
+  },
+  "homepage": "https://github.com/taniho0707/ikanokaiwa#readme",
+  "dependencies": {
+    "audio-mixer": "^2.1.1",
+    "discord.js": "^11.4.2"
+  }
+}
