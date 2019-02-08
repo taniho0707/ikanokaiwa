@@ -38,14 +38,12 @@ var pcmstream;
 var talkinguser = [{}];
 
 function start() {
-    voicech1 = client1.channels.find("id", ids[1].channel);
+    voicech1 = client1.channels.resolve(ids[1].channel);
     voicech1.join().then(con => {
         connection1 = con;
         
-        const dispatcher = connection1.playFile(aisatsu);
+        const dispatcher = connection1.play(aisatsu);
         dispatcher.on("end", () => {
-            const receiver = connection1.createReceiver();
-            
             connection1.on("speaking", (user, speaking) => {
                 console.log("@speaking " + speaking + " by " + user.username);
                 if (speaking) {
@@ -53,7 +51,7 @@ function start() {
                         // TODO
                     }
                     if (ids[1].sendto3) {
-                        if (!talkinguser[user.id] || talkinguser[user.id] === 0) {
+                        //if (!talkinguser[user.id] || talkinguser[user.id] === 0) {
                             talkinguser[user.id] = 1;
                             console.log(user.username);
                             
@@ -68,7 +66,7 @@ function start() {
                             });
                             input1.on("finish", () => {
                                 console.log("*input1 finish");
-                                mixer1.removeInput(this);
+                                mixer1.removeInput(input1);
                             });
                             input1.on("pipe", (src) => {
                                 console.log("*input1 pipe: ");
@@ -80,68 +78,70 @@ function start() {
                                 console.log("end input1");
                             });
                             
-                            pcmstream = receiver.createPCMStream(user);
+                            pcmstream = connection1.receiver.createStream(user, {mode:'pcm'});
                             pcmstream.pipe(input1);
                             pcmstream.on("end", () => {
                                 pcmstream.unpipe();
                                 console.log("pcm end");
                             });
-                        }
+                        //}
                     }
                 } else {
                     talkinguser[user.id] = 0;
                 }
             });
-
-            // ikanokaiwa1がaisatsuの再生を終了後，ikanokaiwa2から音声を流す仕様(テスト用)
-            const hoge = connection2.playFile(aisatsu);
             
         });
     }).catch(console.err);
 
     // ikanokaiwa2はまだ何もしない
-    voicech2 = client2.channels.find("id", ids[2].channel);
+    voicech2 = client2.channels.resolve(ids[2].channel);
     voicech2.join().then(con => {
         connection2 = con;
+		// ikanokaiwa1がaisatsuの再生を終了後，ikanokaiwa2から音声を流す仕様(テスト用)
+		setTimeout( () => {
+			const hoge = connection2.play(aisatsu);
+		}, 2000);
     }).catch(console.err);
 
     // ikanokaiwa3は，ikanokaiwa1から送られてくる音声を再生するだけ
-    voicech3 = client3.channels.find("id", ids[3].channel);
+    voicech3 = client3.channels.resolve(ids[3].channel);
     voicech3.join().then(con => {
         connection3 = con;
-        var pass = new PassThrough();
-        mixer1.pipe(pass);
-        
-        const pcm = fs.createWriteStream("./out.pcm");
-        mixer1.pipe(pcm);
-        console.log("mixer1 connected to 3");
-        
-        var dispatcher = connection3.playConvertedStream(pass);
-        pass.on("data", (chunk) => {
-            console.log("*pass: " + chunk.length);
-            pass.resume();
-        });
-        dispatcher.on("speaking", (value) => {
-            console.log("*dispatcher speaking: " + value);
-        });
-        dispatcher.on("debug", (info) => {
-            console.log("*dispatcher debug: " + info);
-        });
-        dispatcher.on("end", (reason) => {
-            console.log("*dispatcher end: " + reason);
-            stop();
-        });
-        dispatcher.on("error", (error) => {
-            console.log("*dispatcher error: " + error);
-        });
-        dispatcher.stream.on("data", (chunk) => {
-            dispatcher.resume();
-            console.log("*dispatcher: " + chunk.length);
-        });
-        mixer1.on("data", (chunk) => {
-            console.log("*mixer: " + chunk.length);
-            mixer1.resume();
-        });
+		const hoge = connection3.play(aisatsu);
+		hoge.on("end", () => {
+			var pass = new PassThrough();
+			mixer1.pipe(pass);
+			pass.on("data", (chunk) => {
+				console.log("*pass: " + chunk.length);
+				pass.resume();
+			});
+
+			const pcm = fs.createWriteStream("./out.pcm");
+			mixer1.pipe(pcm);
+			mixer1.on("data", (chunk) => {
+				console.log("*mixer: " + chunk.length);
+				mixer1.resume();
+			});
+			console.log("mixer1 connected to 3");
+
+			var dispatcher = connection3.play(mixer1, {
+				type: 'converted',
+				bitrate: '48'
+			});
+			dispatcher.on("start", () => {
+			    console.log("*dispatcher start");
+			});
+			dispatcher.on("speaking", (value) => {
+			    console.log("*dispatcher speaking: " + value);
+			});
+			dispatcher.on("debug", (info) => {
+			    console.log("*dispatcher debug: " + info);
+			});
+			dispatcher.on("error", (error) => {
+			    console.log("*dispatcher error: " + error);
+			});
+		});
     }).catch(console.err);
 }
 
@@ -154,6 +154,7 @@ function stop() {
         voicech1 = null;
         voicech2 = null;
         voicech3 = null;
+		talkinguser = [{}];
     }
 }
 
@@ -186,6 +187,8 @@ client1.on('message', msg => {
     } else if (msg.content === 'ikanokaiwa stop') {
         console.log("stop");
         stop();
+    } else if (msg.content === 'ikanokaiwa reset') {
+		talkinguser = [{}];
     }
 });
 
