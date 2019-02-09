@@ -18,10 +18,22 @@ const client3 = new Discord.Client();
 var AudioMixer = require('audio-mixer');
 
 let mixer1 = new AudioMixer.Mixer({
-    channels: 2,
-    bitDepth: 16,
-    sampleRate: 48000,
-    clearInterval: 250
+	channels: 2,
+	bitDepth: 16,
+	sampleRate: 48000,
+	clearInterval: 250
+});
+let mixer2 = new AudioMixer.Mixer({
+	channels: 2,
+	bitDepth: 16,
+	sampleRate: 48000,
+	clearInterval: 250
+});
+let mixer3 = new AudioMixer.Mixer({
+	channels: 2,
+	bitDepth: 16,
+	sampleRate: 48000,
+	clearInterval: 250
 });
 
 var voicech1;
@@ -35,161 +47,159 @@ var receiver2;
 var receiver3;
 var pcmstream;
 
-var talkinguser = [{}];
+const input1to3 = mixer3.input({
+	channels: 2,
+	bitDepth: 16,
+	sampleRate: 48000,
+	volume: 100
+});
+const input2to3 = mixer3.input({
+	channels: 2,
+	bitDepth: 16,
+	sampleRate: 48000,
+	volume: 100
+});
+mixer1.pipe(input1to3);
+mixer2.pipe(input2to3);
+
 
 function start() {
-    voicech1 = client1.channels.resolve(ids[1].channel);
-    voicech1.join().then(con => {
-        connection1 = con;
-        
-        const dispatcher = connection1.play(aisatsu);
-        dispatcher.on("end", () => {
-            connection1.on("speaking", (user, speaking) => {
-                console.log("@speaking " + speaking + " by " + user.username);
-                if (speaking) {
-                    if (ids[1].sendto2) {
-                        // TODO
-                    }
-                    if (ids[1].sendto3) {
-                        //if (!talkinguser[user.id] || talkinguser[user.id] === 0) {
-                            talkinguser[user.id] = 1;
-                            console.log(user.username);
-                            
-                            const input1 = mixer1.input({
-                                channels: 2,
-                                bitDepth: 16,
-                                sampleRate: 48000,
-                                volume: 100
-                            });
-                            input1.on("error", () => {
-                                console.log("*input1 error");
-                            });
-                            input1.on("finish", () => {
-                                console.log("*input1 finish");
-                                mixer1.removeInput(input1);
-                            });
-                            input1.on("pipe", (src) => {
-                                console.log("*input1 pipe: ");
-                            });
-                            input1.on("unpipe", (src) => {
-                                console.log("*input1 unpipe: ");
-                            });
-                            input1.on("end", () => {
-                                console.log("end input1");
-                            });
-                            
-                            pcmstream = connection1.receiver.createStream(user, {mode:'pcm'});
-                            pcmstream.pipe(input1);
-                            pcmstream.on("end", () => {
-                                pcmstream.unpipe();
-                                console.log("pcm end");
-                            });
-                        //}
-                    }
-                } else {
-                    talkinguser[user.id] = 0;
-                }
-            });
-            
-        });
-    }).catch(console.err);
+	// ikanokaiwa1と2は，プレイヤーの音声をそれぞれのチャンネルのミキサーにまとめる
+	voicech1 = client1.channels.resolve(ids[1].channel);
+	voicech1.join().then(con => {
+		connection1 = con;
+		const dispatcher = connection1.play(aisatsu);
+		dispatcher.on("end", () => {
+			connection1.on("speaking", (user, speaking) => {
+				console.log("@speaking " + speaking + " by " + user.username);
+				if (speaking) {
+					if (ids[1].sendto3) {
+						const input1 = mixer1.input({
+							channels: 2,
+							bitDepth: 16,
+							sampleRate: 48000,
+							volume: 100
+						});
+						input1.on("finish", () => {
+							mixer1.removeInput(input1);
+						});
+						pcmstream = connection1.receiver.createStream(user, {mode:'pcm'});
+						pcmstream.pipe(input1);
+						pcmstream.on("end", () => {
+							pcmstream.unpipe();
+						});
+					}
+				}
+			});
+		});
+	}).catch(console.err);
 
-    // ikanokaiwa2はまだ何もしない
-    voicech2 = client2.channels.resolve(ids[2].channel);
-    voicech2.join().then(con => {
-        connection2 = con;
-		// ikanokaiwa1がaisatsuの再生を終了後，ikanokaiwa2から音声を流す仕様(テスト用)
-		setTimeout( () => {
-			const hoge = connection2.play(aisatsu);
-		}, 2000);
-    }).catch(console.err);
+	voicech2 = client2.channels.resolve(ids[2].channel);
+	voicech2.join().then(con => {
+		connection2 = con;
+		const dispatcher = connection2.play(aisatsu);
+		dispatcher.on("end", () => {
+			connection2.on("speaking", (user, speaking) => {
+				console.log("@speaking " + speaking + " by " + user.username);
+				if (speaking) {
+					if (ids[1].sendto3) {
+						const input2 = mixer2.input({
+							channels: 2,
+							bitDepth: 16,
+							sampleRate: 48000,
+							volume: 100
+						});
+						input2.on("finish", () => {
+							mixer2.removeInput(input2);
+						});
+						pcmstream = connection2.receiver.createStream(user, {mode:'pcm'});
+						pcmstream.pipe(input2);
+						pcmstream.on("end", () => {
+							pcmstream.unpipe();
+						});
+					}
+				}
+			});
+		});
+	}).catch(console.err);
 
-    // ikanokaiwa3は，ikanokaiwa1から送られてくる音声を再生するだけ
-    voicech3 = client3.channels.resolve(ids[3].channel);
-    voicech3.join().then(con => {
-        connection3 = con;
+	// ikanokaiwa3は，ikanokaiwa1と2のミキサーの音声を合成して再生する
+	voicech3 = client3.channels.resolve(ids[3].channel);
+	voicech3.join().then(con => {
+		connection3 = con;
 		const hoge = connection3.play(aisatsu);
 		hoge.on("end", () => {
 			var pass = new PassThrough();
-			mixer1.pipe(pass);
+			mixer3.pipe(pass);
 			pass.on("data", (chunk) => {
 				console.log("*pass: " + chunk.length);
 				pass.resume();
 			});
 
 			const pcm = fs.createWriteStream("./out.pcm");
-			mixer1.pipe(pcm);
-			mixer1.on("data", (chunk) => {
+			mixer3.pipe(pcm);
+			mixer3.on("data", (chunk) => {
 				console.log("*mixer: " + chunk.length);
-				mixer1.resume();
+				mixer3.resume();
 			});
-			console.log("mixer1 connected to 3");
+			console.log("mixer3 connected to 3");
 
-			var dispatcher = connection3.play(mixer1, {
+			var dispatcher = connection3.play(mixer3, {
 				type: 'converted',
 				bitrate: '48'
 			});
 			dispatcher.on("start", () => {
-			    console.log("*dispatcher start");
+				console.log("*dispatcher start");
 			});
 			dispatcher.on("speaking", (value) => {
-			    console.log("*dispatcher speaking: " + value);
+				console.log("*dispatcher speaking: " + value);
 			});
 			dispatcher.on("debug", (info) => {
-			    console.log("*dispatcher debug: " + info);
+				console.log("*dispatcher debug: " + info);
 			});
 			dispatcher.on("error", (error) => {
-			    console.log("*dispatcher error: " + error);
+				console.log("*dispatcher error: " + error);
 			});
 		});
-    }).catch(console.err);
+	}).catch(console.err);
 }
 
 // ikanokaiwaくんstop
 function stop() {
-    if (voicech1) {
-        voicech1.leave();
-        voicech2.leave();
-        voicech3.leave();
-        voicech1 = null;
-        voicech2 = null;
-        voicech3 = null;
-		talkinguser = [{}];
-    }
+	if (voicech1) {
+		voicech1.leave();
+		voicech2.leave();
+		voicech3.leave();
+		voicech1 = null;
+		voicech2 = null;
+		voicech3 = null;
+	}
 }
 
 function loadID() {
-    return JSON.parse(fs.readFileSync('./ikanokaiwa.json', 'utf8'));
+	return JSON.parse(fs.readFileSync('./ikanokaiwa.json', 'utf8'));
 }
 
 function saveID() {
-    fs.writeFile('./ikanokaiwa.json', JSON.stringify(ids, null, '    '));
+	fs.writeFile('./ikanokaiwa.json', JSON.stringify(ids, null, '    '));
 }
 
-client1.on('ready', () => {
-    console.log(`Ready1!`);
-});
+client1.on('ready', () => { console.log(`Ready1!`); });
 
-client2.on('ready', () => {
-    console.log(`Ready2!`);
-});
+client2.on('ready', () => { console.log(`Ready2!`); });
 
-client3.on('ready', () => {
-    console.log(`Ready3!`);
-});
+client3.on('ready', () => { console.log(`Ready3!`); });
 
 client1.on('message', msg => {
-    if (msg.content === "ikanokaiwa help") {
-        msg.reply(helpmessage);
-    } else if (msg.content === 'ikanokaiwa start') {
-        console.log("start");
-        start();
-    } else if (msg.content === 'ikanokaiwa stop') {
-        console.log("stop");
-        stop();
-    } else if (msg.content === 'ikanokaiwa reset') {
-		talkinguser = [{}];
-    }
+	if (msg.content === "ikanokaiwa help") {
+		msg.reply(helpmessage);
+	} else if (msg.content === 'ikanokaiwa start') {
+		console.log("start");
+		start();
+	} else if (msg.content === 'ikanokaiwa stop') {
+		console.log("stop");
+		stop();
+	}
 });
 
 
