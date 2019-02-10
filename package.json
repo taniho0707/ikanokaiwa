@@ -21,8 +21,7 @@
   "homepage": "https://github.com/taniho0707/ikanokaiwa#readme",
   "dependencies": {
     "@discordjs/uws": "^11.149.1",
-    "audio-mixer": "^2.1.1",
-    "audio-speaker": "^1.5.0",
+    "audio-mixer": "github:tokoro10g/Audio-Mixer#feature-softclip",
     "discord.js": "github:discordjs/discord.js",
     "erlpack": "github:discordapp/erlpack",
     "node-opus": "^0.3.1"
