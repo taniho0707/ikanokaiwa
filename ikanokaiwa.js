@@ -1,40 +1,67 @@
 'use strict';
 
-const { PassThrough } = require('stream')
-var fs = require('fs');
+const helpMessage = '\
+【ikanokaiwaの使い方】\
+ikanokaiwa help：このヘルプを出します\
+ikanokaiwa start：ikanokaiwaを始めます\
+ikanokaiwa stop：ikanokaiwaを終わります\
+ikanokaiwa channel (bot number) (channel id)：botが入室するチャンネルを設定します\
+    bot number：設定するbotの番号，1〜3の数字\
+    channle id：入室させるボイスチャンネルのid\
+ikanokaiwa direction (ABCDEF)：音声の転送方向を設定します\
+    ABCDEFにはそれぞれ0か1が当てはまり，1の場合は下記に示すように音声を転送します\
+    A：1→2，B：1→3\
+    C：2→1，D：2→3\
+    E：3→1，F：3→2\
+    ex) ikanokaiwa direction 010111：1→A，2→B，3→観戦とした設定\
+';
 
-var helpmessage = "\n【ikanokaiwaの使い方】\nikanokaiwa help：このヘルプを出します\nikanokaiwa start：ikanokaiwaを始めます\nikanokaiwa stop：ikanokaiwaを終わります\nikanokaiwa channel (bot number) (channel id)：botが入室するチャンネルを設定します\n    bot number：設定するbotの番号，1〜3の数字\n    channle id：入室させるボイスチャンネルのid\nikanokaiwa direction (ABCDEF)：音声の転送方向を設定します\n    ABCDEFにはそれぞれ0か1が当てはまり，1の場合は下記に示すように音声を転送します\n    A：1→2，B：1→3\n    C：2→1，D：2→3\n    E：3→1，F：3→2\n    ex) ikanokaiwa direction 010111：1→A，2→B，3→観戦とした設定";
-
-var ids = [{}];
-
-// 挨拶用の音声ファイルを指定
-var aisatsu = "./resource/aisatsu.mp3";
-
+// include modules
+const fs = require('fs');
+const path = require('path');
+const config = require('config');
 const Discord = require('discord.js');
+const AudioMixer = require('audio-mixer');
+const { PassThrough } = require('stream');
+
+// setup Base Modules
+const mixers = Array(config.botCount).fill(new AudioMixer.Mixer(config.mixerSetting));
+const clients = Array(config.botCount).fill(new Discord.Client());
+
+// load secrets
+let tokens = [];
+let voiceChannelIds = [];
+if (fs.existsSync(config.secretPath)) {
+	const secret = require(config.secretPath);
+	tokens = secret.tokens;
+	voiceChannelIds = secret.voiceChannelIds;
+} else {
+	// tokens and voiceChannelIds are split on comma
+	const tokensText = process.env.tokens || '';
+	tokens = tokensText.split(',');
+	const voiceChannelIdsText = secret.voiceChannelIds || '';
+	voiceChannelIds = voiceChannelIdsText.split(',');
+}
+// secrets validation
+if (tokens.length < config.botCount) {
+	console.error('tokens.length < config.botCount');
+	process.exit(1);
+
+}
+if (voiceChannelIds.length < config.botCount) {
+	console.error('voiceChannelIds.length < config.botCount');
+	process.exit(1);
+}
+
+
 const client1 = new Discord.Client();
 const client2 = new Discord.Client();
 const client3 = new Discord.Client();
 
-var AudioMixer = require('audio-mixer');
 
-let mixer1 = new AudioMixer.Mixer({
-	channels: 2,
-	bitDepth: 16,
-	sampleRate: 48000,
-	clearInterval: 250
-});
-let mixer2 = new AudioMixer.Mixer({
-	channels: 2,
-	bitDepth: 16,
-	sampleRate: 48000,
-	clearInterval: 250
-});
-let mixer3 = new AudioMixer.Mixer({
-	channels: 2,
-	bitDepth: 16,
-	sampleRate: 48000,
-	clearInterval: 250
-});
+let mixer1 = new AudioMixer.Mixer(config.mixerSetting);
+let mixer2 = new AudioMixer.Mixer(config.mixerSetting);
+let mixer3 = new AudioMixer.Mixer(config.mixerSetting);
 
 var voicech1;
 var voicech2;
@@ -65,69 +92,66 @@ mixer2.pipe(input2to3);
 
 function start() {
 	// ikanokaiwa1と2は，プレイヤーの音声をそれぞれのチャンネルのミキサーにまとめる
-	voicech1 = client1.channels.resolve(ids[1].channel);
+	voicech1 = client1.channels.resolve(voiceChannelIds[0]);
 	voicech1.join().then(con => {
 		connection1 = con;
-		const dispatcher = connection1.play(aisatsu);
+		const dispatcher = connection1.play(config.setupSoundPath);
 		dispatcher.on("end", () => {
 			connection1.on("speaking", (user, speaking) => {
 				console.log("@speaking " + speaking + " by " + user.username);
 				if (speaking) {
-					if (ids[1].sendto3) {
-						const input1 = mixer1.input({
-							channels: 2,
-							bitDepth: 16,
-							sampleRate: 48000,
-							volume: 100
-						});
-						input1.on("finish", () => {
-							mixer1.removeInput(input1);
-						});
-						pcmstream = connection1.receiver.createStream(user, {mode:'pcm'});
-						pcmstream.pipe(input1);
-						pcmstream.on("end", () => {
-							pcmstream.unpipe();
-						});
-					}
+					const input1 = mixer1.input({
+						channels: 2,
+						bitDepth: 16,
+						sampleRate: 48000,
+						volume: 100
+					});
+					input1.on("finish", () => {
+						mixer1.removeInput(input1);
+					});
+					pcmstream = connection1.receiver.createStream(user, {mode:'pcm'});
+					pcmstream.pipe(input1);
+					pcmstream.on("end", () => {
+						pcmstream.unpipe();
+					});
+				
 				}
 			});
 		});
 	}).catch(console.err);
 
-	voicech2 = client2.channels.resolve(ids[2].channel);
+	voicech2 = client2.channels.resolve(voiceChannelIds[1]);
 	voicech2.join().then(con => {
 		connection2 = con;
-		const dispatcher = connection2.play(aisatsu);
+		const dispatcher = connection2.play(config.setupSoundPath);
 		dispatcher.on("end", () => {
 			connection2.on("speaking", (user, speaking) => {
 				console.log("@speaking " + speaking + " by " + user.username);
 				if (speaking) {
-					if (ids[1].sendto3) {
-						const input2 = mixer2.input({
-							channels: 2,
-							bitDepth: 16,
-							sampleRate: 48000,
-							volume: 100
-						});
-						input2.on("finish", () => {
-							mixer2.removeInput(input2);
-						});
-						pcmstream = connection2.receiver.createStream(user, {mode:'pcm'});
-						pcmstream.pipe(input2);
-						pcmstream.on("end", () => {
-							pcmstream.unpipe();
-						});
-					}
+					const input2 = mixer2.input({
+						channels: 2,
+						bitDepth: 16,
+						sampleRate: 48000,
+						volume: 100
+					});
+					input2.on("finish", () => {
+						mixer2.removeInput(input2);
+					});
+					pcmstream = connection2.receiver.createStream(user, {mode:'pcm'});
+					pcmstream.pipe(input2);
+					pcmstream.on("end", () => {
+						pcmstream.unpipe();
+					});
 				}
 			});
 		});
 	}).catch(console.err);
 
 	// ikanokaiwa3は，ikanokaiwa1と2のミキサーの音声を合成して再生する
-	voicech3 = client3.channels.resolve(ids[3].channel);
+	voicech3 = client3.channels.resolve(voiceChannelIds[2]);
 	voicech3.join().then(con => {
 		connection3 = con;
-		const hoge = connection3.play(aisatsu);
+		const hoge = connection3.play(config.setupSoundPath);
 		hoge.on("end", () => {
 			var pass = new PassThrough();
 			mixer3.pipe(pass);
@@ -176,13 +200,7 @@ function stop() {
 	}
 }
 
-function loadID() {
-	return JSON.parse(fs.readFileSync('./ikanokaiwa.json', 'utf8'));
-}
 
-function saveID() {
-	fs.writeFile('./ikanokaiwa.json', JSON.stringify(ids, null, '    '));
-}
 
 client1.on('ready', () => { console.log(`Ready1!`); });
 
@@ -192,7 +210,7 @@ client3.on('ready', () => { console.log(`Ready3!`); });
 
 client1.on('message', msg => {
 	if (msg.content === "ikanokaiwa help") {
-		msg.reply(helpmessage);
+		msg.reply(helpMessage);
 	} else if (msg.content === 'ikanokaiwa start') {
 		console.log("start");
 		start();
@@ -203,10 +221,7 @@ client1.on('message', msg => {
 });
 
 
-ids = loadID();
-console.log(ids);
-
-client1.login('ikanokaiwa1 TOKEN');
-client2.login('ikanokaiwa2 TOKEN');
-client3.login('ikanokaiwa3 TOKEN');
+client1.login(tokens[0]);
+client2.login(tokens[1]);
+client3.login(tokens[2]);
 
