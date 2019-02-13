@@ -1,19 +1,19 @@
 'use strict';
 
 const helpMessage = '\
-【ikanokaiwaの使い方】\
-ikanokaiwa help：このヘルプを出します\
-ikanokaiwa start：ikanokaiwaを始めます\
-ikanokaiwa stop：ikanokaiwaを終わります\
-ikanokaiwa channel (bot number) (channel id)：botが入室するチャンネルを設定します\
-    bot number：設定するbotの番号，1〜3の数字\
-    channle id：入室させるボイスチャンネルのid\
-ikanokaiwa direction (ABCDEF)：音声の転送方向を設定します\
-    ABCDEFにはそれぞれ0か1が当てはまり，1の場合は下記に示すように音声を転送します\
-    A：1→2，B：1→3\
-    C：2→1，D：2→3\
-    E：3→1，F：3→2\
-    ex) ikanokaiwa direction 010111：1→A，2→B，3→観戦とした設定\
+【ikanokaiwaの使い方】\n\
+ikanokaiwa help：このヘルプを出します\n\
+ikanokaiwa start：ikanokaiwaを始めます\n\
+ikanokaiwa stop：ikanokaiwaを終わります\n\
+ikanokaiwa channel (bot number) (channel id)：botが入室するチャンネルを設定します\n\
+    bot number：設定するbotの番号，1〜3の数字\n\
+    channle id：入室させるボイスチャンネルのid\n\
+ikanokaiwa direction (ABCDEF)：音声の転送方向を設定します\n\
+    ABCDEFにはそれぞれ0か1が当てはまり，1の場合は下記に示すように音声を転送します\n\
+    A：1→2，B：1→3\n\
+    C：2→1，D：2→3\n\
+    E：3→1，F：3→2\n\
+    ex) ikanokaiwa direction 010111：1→A，2→B，3→観戦とした設定\n\
 ';
 
 // include modules
@@ -24,9 +24,30 @@ const Discord = require('discord.js');
 const AudioMixer = require('audio-mixer');
 const { PassThrough } = require('stream');
 
+// botCount validation
+if(config.botCount < 2) {
+	console.error('config.botCount < 2');
+	process.exit(1);
+}
 // setup Base Modules
-const mixers = Array(config.botCount).fill(new AudioMixer.Mixer(config.mixerSetting));
-const clients = Array(config.botCount).fill(new Discord.Client());
+const mixers = Array(config.botCount).fill(0).map(_ => new AudioMixer.Mixer(config.mixerSetting));
+const clients = Array(config.botCount).fill(0).map(_ => new Discord.Client());
+
+
+let mixer1 = new AudioMixer.Mixer(config.mixerSetting);
+let mixer2 = new AudioMixer.Mixer(config.mixerSetting);
+let mixer3 = new AudioMixer.Mixer(config.mixerSetting);
+
+var voicech1;
+var voicech2;
+var voicech3;
+var connection1;
+var connection2;
+var connection3;
+var receiver1;
+var receiver2;
+var receiver3;
+var pcmstream;
 
 // load secrets
 let tokens = [];
@@ -54,26 +75,6 @@ if (voiceChannelIds.length < config.botCount) {
 }
 
 
-const client1 = new Discord.Client();
-const client2 = new Discord.Client();
-const client3 = new Discord.Client();
-
-
-let mixer1 = new AudioMixer.Mixer(config.mixerSetting);
-let mixer2 = new AudioMixer.Mixer(config.mixerSetting);
-let mixer3 = new AudioMixer.Mixer(config.mixerSetting);
-
-var voicech1;
-var voicech2;
-var voicech3;
-var connection1;
-var connection2;
-var connection3;
-var receiver1;
-var receiver2;
-var receiver3;
-var pcmstream;
-
 const input1to3 = mixer3.input({
 	channels: 2,
 	bitDepth: 16,
@@ -92,7 +93,7 @@ mixer2.pipe(input2to3);
 
 function start() {
 	// ikanokaiwa1と2は，プレイヤーの音声をそれぞれのチャンネルのミキサーにまとめる
-	voicech1 = client1.channels.resolve(voiceChannelIds[0]);
+	voicech1 = clients[0].channels.resolve(voiceChannelIds[0]);
 	voicech1.join().then(con => {
 		connection1 = con;
 		const dispatcher = connection1.play(config.setupSoundPath);
@@ -120,7 +121,7 @@ function start() {
 		});
 	}).catch(console.err);
 
-	voicech2 = client2.channels.resolve(voiceChannelIds[1]);
+	voicech2 = clients[1].channels.resolve(voiceChannelIds[1]);
 	voicech2.join().then(con => {
 		connection2 = con;
 		const dispatcher = connection2.play(config.setupSoundPath);
@@ -148,7 +149,7 @@ function start() {
 	}).catch(console.err);
 
 	// ikanokaiwa3は，ikanokaiwa1と2のミキサーの音声を合成して再生する
-	voicech3 = client3.channels.resolve(voiceChannelIds[2]);
+	voicech3 = clients[2].channels.resolve(voiceChannelIds[2]);
 	voicech3.join().then(con => {
 		connection3 = con;
 		const hoge = connection3.play(config.setupSoundPath);
@@ -201,14 +202,7 @@ function stop() {
 }
 
 
-
-client1.on('ready', () => { console.log(`Ready1!`); });
-
-client2.on('ready', () => { console.log(`Ready2!`); });
-
-client3.on('ready', () => { console.log(`Ready3!`); });
-
-client1.on('message', msg => {
+clients[0].on('message', msg => {
 	if (msg.content === "ikanokaiwa help") {
 		msg.reply(helpMessage);
 	} else if (msg.content === 'ikanokaiwa start') {
@@ -219,9 +213,8 @@ client1.on('message', msg => {
 		stop();
 	}
 });
-
-
-client1.login(tokens[0]);
-client2.login(tokens[1]);
-client3.login(tokens[2]);
-
+clients.forEach((c, index) => {
+	c.on('ready', () => console.log('ready', index));
+	c.login(tokens[index]);
+	console.log('login', index);
+});

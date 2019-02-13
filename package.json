@@ -24,6 +24,7 @@
     "audio-mixer": "github:tokoro10g/Audio-Mixer#feature-softclip",
     "discord.js": "github:discordjs/discord.js",
     "erlpack": "github:discordapp/erlpack",
+    "config": "^3.0.1",
     "node-opus": "^0.3.1"
   }
 }

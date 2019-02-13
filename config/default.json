@@ -6,6 +6,12 @@
         "channels": 2,
         "bitDepth": 16,
         "sampleRate": 48000,
-        "clearInterval": 250   
+        "clearInterval": 250
+    },
+    "mixerInputSetting": {
+        "channels": 2,
+        "bitDepth": 16,
+        "sampleRate": 48000,
+        "volume": 100
     }
 }
