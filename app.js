@@ -30,24 +30,16 @@ if(config.botCount < 2) {
 	process.exit(1);
 }
 // setup Base Modules
-const mixers = Array(config.botCount).fill(0).map(_ => new AudioMixer.Mixer(config.mixerSetting));
+const mixers  = Array(config.botCount).fill(0).map(_ => new AudioMixer.Mixer(config.mixerSetting));
 const clients = Array(config.botCount).fill(0).map(_ => new Discord.Client());
 
-
-let mixer1 = new AudioMixer.Mixer(config.mixerSetting);
-let mixer2 = new AudioMixer.Mixer(config.mixerSetting);
-let mixer3 = new AudioMixer.Mixer(config.mixerSetting);
-
-var voicech1;
-var voicech2;
-var voicech3;
-var connection1;
-var connection2;
-var connection3;
-var receiver1;
-var receiver2;
-var receiver3;
-var pcmstream;
+// mixer pipe setting(mixers[0] is lobby channel)
+const inputPipes = 
+	mixers.slice(1).map((m) =>{
+		const inputPipe = mixers[0].input(config.mixerInputSetting);
+		m.pipe(inputPipe);
+		return inputPipe;
+	});
 
 // load secrets
 let tokens = [];
@@ -75,25 +67,64 @@ if (voiceChannelIds.length < config.botCount) {
 }
 
 
-const input1to3 = mixer3.input({
-	channels: 2,
-	bitDepth: 16,
-	sampleRate: 48000,
-	volume: 100
-});
-const input2to3 = mixer3.input({
-	channels: 2,
-	bitDepth: 16,
-	sampleRate: 48000,
-	volume: 100
-});
-mixer1.pipe(input1to3);
-mixer2.pipe(input2to3);
 
+// TODO: remove here
+var voicech1;
+var voicech2;
+var voicech3;
+var connection1;
+var connection2;
+var connection3;
+var receiver1;
+var receiver2;
+var receiver3;
+var pcmstream;
 
 function start() {
-	// ikanokaiwa1と2は，プレイヤーの音声をそれぞれのチャンネルのミキサーにまとめる
-	voicech1 = clients[0].channels.resolve(voiceChannelIds[0]);
+
+		// ikanokaiwa3は，ikanokaiwa1と2のミキサーの音声を合成して再生する
+		voicech3 = clients[0].channels.resolve(voiceChannelIds[0]);
+		voicech3.join().then(con => {
+			connection3 = con;
+			const hoge = connection3.play(config.setupSoundPath);
+			hoge.on("end", () => {
+				var pass = new PassThrough();
+				mixers[0].pipe(pass);
+				pass.on("data", (chunk) => {
+					console.log("*pass: " + chunk.length);
+					pass.resume();
+				});
+	
+				const pcm = fs.createWriteStream("./out.pcm");
+				mixers[0].pipe(pcm);
+				mixers[0].on("data", (chunk) => {
+					console.log("*mixer: " + chunk.length);
+					mixers[0].resume();
+				});
+				console.log("mixer3 connected to 3");
+	
+				var dispatcher = connection3.play(mixers[0], {
+					type: 'converted',
+					bitrate: '48'
+				});
+				dispatcher.on("start", () => {
+					console.log("*dispatcher start");
+				});
+				dispatcher.on("speaking", (value) => {
+					console.log("*dispatcher speaking: " + value);
+				});
+				dispatcher.on("debug", (info) => {
+					console.log("*dispatcher debug: " + info);
+				});
+				dispatcher.on("error", (error) => {
+					console.log("*dispatcher error: " + error);
+				});
+			});
+		}).catch(console.err);
+
+
+		// ikanokaiwa1と2は，プレイヤーの音声をそれぞれのチャンネルのミキサーにまとめる
+	voicech1 = clients[1].channels.resolve(voiceChannelIds[1]);
 	voicech1.join().then(con => {
 		connection1 = con;
 		const dispatcher = connection1.play(config.setupSoundPath);
@@ -101,14 +132,14 @@ function start() {
 			connection1.on("speaking", (user, speaking) => {
 				console.log("@speaking " + speaking + " by " + user.username);
 				if (speaking) {
-					const input1 = mixer1.input({
+					const input1 = mixers[1].input({
 						channels: 2,
 						bitDepth: 16,
 						sampleRate: 48000,
 						volume: 100
 					});
 					input1.on("finish", () => {
-						mixer1.removeInput(input1);
+						mixers[1].removeInput(input1);
 					});
 					pcmstream = connection1.receiver.createStream(user, {mode:'pcm'});
 					pcmstream.pipe(input1);
@@ -121,7 +152,7 @@ function start() {
 		});
 	}).catch(console.err);
 
-	voicech2 = clients[1].channels.resolve(voiceChannelIds[1]);
+	voicech2 = clients[2].channels.resolve(voiceChannelIds[2]);
 	voicech2.join().then(con => {
 		connection2 = con;
 		const dispatcher = connection2.play(config.setupSoundPath);
@@ -129,14 +160,14 @@ function start() {
 			connection2.on("speaking", (user, speaking) => {
 				console.log("@speaking " + speaking + " by " + user.username);
 				if (speaking) {
-					const input2 = mixer2.input({
+					const input2 = mixers[2].input({
 						channels: 2,
 						bitDepth: 16,
 						sampleRate: 48000,
 						volume: 100
 					});
 					input2.on("finish", () => {
-						mixer2.removeInput(input2);
+						mixers[2].removeInput(input2);
 					});
 					pcmstream = connection2.receiver.createStream(user, {mode:'pcm'});
 					pcmstream.pipe(input2);
@@ -144,46 +175,6 @@ function start() {
 						pcmstream.unpipe();
 					});
 				}
-			});
-		});
-	}).catch(console.err);
-
-	// ikanokaiwa3は，ikanokaiwa1と2のミキサーの音声を合成して再生する
-	voicech3 = clients[2].channels.resolve(voiceChannelIds[2]);
-	voicech3.join().then(con => {
-		connection3 = con;
-		const hoge = connection3.play(config.setupSoundPath);
-		hoge.on("end", () => {
-			var pass = new PassThrough();
-			mixer3.pipe(pass);
-			pass.on("data", (chunk) => {
-				console.log("*pass: " + chunk.length);
-				pass.resume();
-			});
-
-			const pcm = fs.createWriteStream("./out.pcm");
-			mixer3.pipe(pcm);
-			mixer3.on("data", (chunk) => {
-				console.log("*mixer: " + chunk.length);
-				mixer3.resume();
-			});
-			console.log("mixer3 connected to 3");
-
-			var dispatcher = connection3.play(mixer3, {
-				type: 'converted',
-				bitrate: '48'
-			});
-			dispatcher.on("start", () => {
-				console.log("*dispatcher start");
-			});
-			dispatcher.on("speaking", (value) => {
-				console.log("*dispatcher speaking: " + value);
-			});
-			dispatcher.on("debug", (info) => {
-				console.log("*dispatcher debug: " + info);
-			});
-			dispatcher.on("error", (error) => {
-				console.log("*dispatcher error: " + error);
 			});
 		});
 	}).catch(console.err);

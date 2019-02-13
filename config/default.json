@@ -13,5 +13,7 @@
         "bitDepth": 16,
         "sampleRate": 48000,
         "volume": 100
-    }
+    },
+    "recordLobby": true,
+    "recordOthers": true
 }
