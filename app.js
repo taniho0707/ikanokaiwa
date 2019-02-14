@@ -28,6 +28,7 @@ const { PassThrough } = require('stream');
 // setup log4js
 log4js.configure(config.log4js);
 const defaultLogger = log4js.getLogger('default');
+const debugLogger = log4js.getLogger('debug');
 const errorLogger = log4js.getLogger('error');
 defaultLogger.info('run ikanokaiwa');
 
@@ -73,6 +74,47 @@ if (voiceChannelIds.length < config.botCount) {
 	process.exit(1);
 }
 
+// for mixers[0]
+// returnValue: voiceChannel Reference(for leave and dispose)
+const setupVoiceMixing = (mixer, client, channelId, debug) => {
+	defaultLogger.info(`setupVoiceMixing ${channelId}`);
+	const vc = client.channels.resolve(channelId);
+	// join vc -> mixing stream
+	vc.join().then(connection => {
+		// passthrough debugprint(performance impact...)
+		if (debug) {
+			const pass = new PassThrough();
+			mixers[0].pipe(pass);
+			pass.on("data", (chunk) => {
+				debugLogger.info(`[Mixing] pass:${chunk.length}`);
+				pass.resume();
+			});
+			mixer.on("data", (chunk) => {
+				debugLogger.info(`[Mixing] mix:${chunk.length}`);
+				mixer.resume();
+			});
+			debugLogger.info("[Mixing] debug probe inserted");
+		}
+		// mixer -> vc stream
+		const dispatcher = connection.play(mixer, {
+			type: 'converted',
+			bitrate: '48'
+		});
+		dispatcher.on("start", () => {
+			debugLogger.info(`[Mixing] dispatcher start`);
+		});
+		dispatcher.on("speaking", (value) => {
+			debugLogger.info(`[Mixing] dispatcher sepeaking:${value}`);
+		});
+		dispatcher.on("debug", (info) => {
+			debugLogger.info(`[Mixing] dispatcher debug:${info}`);
+		});
+		dispatcher.on("error", (error) => {
+			errorLogger.error(`[Mixing] dispatcher error:${error}`);
+		});
+	}).catch(errorLogger.error);
+	return vc;
+};
 
 
 // TODO: remove here
@@ -88,46 +130,46 @@ var receiver3;
 var pcmstream;
 
 function start() {
-
 		// ikanokaiwa3は，ikanokaiwa1と2のミキサーの音声を合成して再生する
-		voicech3 = clients[0].channels.resolve(voiceChannelIds[0]);
-		voicech3.join().then(con => {
-			connection3 = con;
-			const hoge = connection3.play(config.setupSoundPath);
-			hoge.on("end", () => {
-				var pass = new PassThrough();
-				mixers[0].pipe(pass);
-				pass.on("data", (chunk) => {
-					defaultLogger.info("*pass: " + chunk.length);
-					pass.resume();
-				});
+		voicech3 = setupVoiceMixing(mixers[0], clients[0], voiceChannelIds[0], config.debug);
+		// voicech3 = clients[0].channels.resolve(voiceChannelIds[0]);
+		// voicech3.join().then(con => {
+		// 	connection3 = con;
+		// 	const hoge = connection3.play(config.setupSoundPath);
+		// 	hoge.on("end", () => {
+		// 		var pass = new PassThrough();
+		// 		mixers[0].pipe(pass);
+		// 		pass.on("data", (chunk) => {
+		// 			defaultLogger.info("*pass: " + chunk.length);
+		// 			pass.resume();
+		// 		});
 	
-				const pcm = fs.createWriteStream("./out.pcm");
-				mixers[0].pipe(pcm);
-				mixers[0].on("data", (chunk) => {
-					defaultLogger.info("*mixer: " + chunk.length);
-					mixers[0].resume();
-				});
-				defaultLogger.info("mixer3 connected to 3");
+		// 		const pcm = fs.createWriteStream("./out.pcm");
+		// 		mixers[0].pipe(pcm);
+		// 		mixers[0].on("data", (chunk) => {
+		// 			defaultLogger.info("*mixer: " + chunk.length);
+		// 			mixers[0].resume();
+		// 		});
+		// 		defaultLogger.info("mixer3 connected to 3");
 	
-				var dispatcher = connection3.play(mixers[0], {
-					type: 'converted',
-					bitrate: '48'
-				});
-				dispatcher.on("start", () => {
-					defaultLogger.info("*dispatcher start");
-				});
-				dispatcher.on("speaking", (value) => {
-					defaultLogger.info("*dispatcher speaking: " + value);
-				});
-				dispatcher.on("debug", (info) => {
-					defaultLogger.info("*dispatcher debug: " + info);
-				});
-				dispatcher.on("error", (error) => {
-					defaultLogger.info("*dispatcher error: " + error);
-				});
-			});
-		}).catch(errorLogger.error);
+		// 		var dispatcher = connection3.play(mixers[0], {
+		// 			type: 'converted',
+		// 			bitrate: '48'
+		// 		});
+		// 		dispatcher.on("start", () => {
+		// 			defaultLogger.info("*dispatcher start");
+		// 		});
+		// 		dispatcher.on("speaking", (value) => {
+		// 			defaultLogger.info("*dispatcher speaking: " + value);
+		// 		});
+		// 		dispatcher.on("debug", (info) => {
+		// 			defaultLogger.info("*dispatcher debug: " + info);
+		// 		});
+		// 		dispatcher.on("error", (error) => {
+		// 			defaultLogger.info("*dispatcher error: " + error);
+		// 		});
+		// 	});
+		// }).catch(errorLogger.error);
 
 
 		// ikanokaiwa1と2は，プレイヤーの音声をそれぞれのチャンネルのミキサーにまとめる

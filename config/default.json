@@ -14,6 +14,7 @@
         "sampleRate": 48000,
         "volume": 100
     },
+    "debug": true,
     "log4js": {
         "appenders": {
             "info": {
@@ -41,6 +42,13 @@
             "default": {
                 "appenders": [
                     "info",
+                    "console",
+                    "stdout"
+                ],
+                "level": "INFO"
+            },
+            "debug": {
+                "appenders": [
                     "console",
                     "stdout"
                 ],
