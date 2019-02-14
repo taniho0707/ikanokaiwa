@@ -32,6 +32,12 @@ if(config.botCount < 2) {
 	errorLogger.error('config.botCount < 2');
 	process.exit(1);
 }
+
+// startup sound
+if(!fs.existsSync(config.startupSoundPath)) {
+	errorLogger.error(`startupSound not found [${config.startupSoundPath}]`);
+}
+
 // setup Base Modules
 const mixers  = Array(config.botCount).fill(0).map(_ => new AudioMixer.Mixer(config.mixerSetting));
 const clients = Array(config.botCount).fill(0).map(_ => new Discord.Client());
@@ -74,70 +80,76 @@ if (voiceChannelIds.length < config.botCount) {
 
 // for mixers[0]
 // returnValue: voiceChannel Reference(for leave and dispose)
-const setupVoiceMixing = (mixer, client, channelId, debug) => {
+const setupVoiceMixing = (mixer, client, channelId, debug, soundPath) => {
 	defaultLogger.info(`setupVoiceMixing ${channelId}`);
 	const vc = client.channels.resolve(channelId);
 	// join vc -> mixing stream
 	vc.join().then(connection => {
-		defaultLogger.info(`[Mixing] Join ${vc.name}`);
-		// passthrough debugprint(performance impact...)
-		if (debug) {
-			const pass = new PassThrough();
-			mixers[0].pipe(pass);
-			pass.on("data", (chunk) => {
-				debugLogger.info(`[Mixing] pass:${chunk.length}`);
-				pass.resume();
+		// play startup sound
+		connection.play(soundPath).on('end', () => {
+			defaultLogger.info(`[Mixing] Join ${vc.name}`);
+			// passthrough debugprint(performance impact...)
+			if (debug) {
+				const pass = new PassThrough();
+				mixers[0].pipe(pass);
+				pass.on("data", (chunk) => {
+					debugLogger.info(`[Mixing] pass:${chunk.length}`);
+					pass.resume();
+				});
+				mixer.on("data", (chunk) => {
+					debugLogger.info(`[Mixing] mix:${chunk.length}`);
+					mixer.resume();
+				});
+				debugLogger.info("[Mixing] debug probe inserted");
+			}
+			// mixer -> vc stream
+			const dispatcher = connection.play(mixer, {
+				type: 'converted',
+				bitrate: '48'
 			});
-			mixer.on("data", (chunk) => {
-				debugLogger.info(`[Mixing] mix:${chunk.length}`);
-				mixer.resume();
+			dispatcher.on("start", () => {
+				debugLogger.info(`[Mixing] dispatcher start`);
 			});
-			debugLogger.info("[Mixing] debug probe inserted");
-		}
-		// mixer -> vc stream
-		const dispatcher = connection.play(mixer, {
-			type: 'converted',
-			bitrate: '48'
-		});
-		dispatcher.on("start", () => {
-			debugLogger.info(`[Mixing] dispatcher start`);
-		});
-		dispatcher.on("speaking", (value) => {
-			debugLogger.info(`[Mixing] dispatcher sepeaking:${value}`);
-		});
-		dispatcher.on("debug", (info) => {
-			debugLogger.info(`[Mixing] dispatcher debug:${info}`);
-		});
-		dispatcher.on("error", (error) => {
-			errorLogger.error(`[Mixing] dispatcher error:${error}`);
+			dispatcher.on("speaking", (value) => {
+				debugLogger.info(`[Mixing] dispatcher sepeaking:${value}`);
+			});
+			dispatcher.on("debug", (info) => {
+				debugLogger.info(`[Mixing] dispatcher debug:${info}`);
+			});
+			dispatcher.on("error", (error) => {
+				errorLogger.error(`[Mixing] dispatcher error:${error}`);
+			});
 		});
 	}).catch(errorLogger.error);
 	return vc;
 };
 
 // for mixers[1: ...]
-const setupVoiceCapture = (mixer, client, channelId, inputSetting) => {
+const setupVoiceCapture = (mixer, client, channelId, inputSetting, soundPath) => {
 	defaultLogger.info(`setupVoiceCapture ${channelId}`);
 	const vc = client.channels.resolve(channelId);
 	// join vc -> wait for speaking -> capture stream -> pipe mixer
 	vc.join().then(connection => {
-		defaultLogger.info(`[Capture] Join ${vc.name}`);
-		connection.on("speaking", (user, speaking) => {
-			debugLogger.info(`[Capture] speaking:${speaking} from:${user.username}`);
-			if (speaking) {
-				const input = mixer.input(inputSetting);
-				input.on("finish", () => {
-					mixer.removeInput(input);
-					debugLogger.info(`[Capture] input remove from:${user.username}`);
-				});
-				const stream = connection.receiver.createStream(user, {mode: 'pcm'});
-				stream.pipe(input);
-				stream.on("end", () => {
-					stream.unpipe();
-					debugLogger.info(`[Capture] stop receive stream from:${user.username}`);
-				});
-				debugLogger.info(`[Capture] start receive stream from:${user.username}`);
-			}
+		// play startup sound
+		connection.play(soundPath).on('end', () => {
+			defaultLogger.info(`[Capture] Join ${vc.name}`);
+			connection.on("speaking", (user, speaking) => {
+				debugLogger.info(`[Capture] speaking:${speaking} from:${user.username}`);
+				if (speaking) {
+					const input = mixer.input(inputSetting);
+					input.on("finish", () => {
+						mixer.removeInput(input);
+						debugLogger.info(`[Capture] input remove from:${user.username}`);
+					});
+					const stream = connection.receiver.createStream(user, {mode: 'pcm'});
+					stream.pipe(input);
+					stream.on("end", () => {
+						stream.unpipe();
+						debugLogger.info(`[Capture] stop receive stream from:${user.username}`);
+					});
+					debugLogger.info(`[Capture] start receive stream from:${user.username}`);
+				}
+			});
 		});
 	}).catch(errorLogger.error);
 	return vc;
@@ -160,10 +172,10 @@ const run = () => {
 			// こことinputPipesをconfigurableにすれば便利だけど需要がないので実装していない
 			if (index === 0) {
 				// setup lobby mixing
-				return setupVoiceMixing(mixer, client, channelId, config.debug);
+				return setupVoiceMixing(mixer, client, channelId, config.debug, config.startupSoundPath);
 			} else {
 				// setup voicechat capture
-				return setupVoiceCapture(mixer, client, channelId, config.mixerInputSetting);
+				return setupVoiceCapture(mixer, client, channelId, config.mixerInputSetting, config.startupSoundPath);
 			}
 		});
 }
