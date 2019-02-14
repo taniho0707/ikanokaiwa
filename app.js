@@ -25,6 +25,9 @@ const Discord = require('discord.js');
 const AudioMixer = require('audio-mixer');
 const { PassThrough } = require('stream');
 
+//////////////////////////////////////////////////////////////////////
+// modules setup
+
 // setup log4js
 log4js.configure(config.log4js);
 const defaultLogger = log4js.getLogger('default');
@@ -75,6 +78,8 @@ if (voiceChannelIds.length < config.botCount) {
 	process.exit(1);
 }
 
+//////////////////////////////////////////////////////////////////////
+// core function
 
 // for mixers[0]
 // returnValue: voiceChannel Reference(for leave and dispose)
@@ -142,14 +147,19 @@ const setupVoiceCapture = (mixer, client, channelId, inputSetting) => {
 			}
 		});
 	}).catch(errorLogger.error);
+	return vc;
 };
+
+
+//////////////////////////////////////////////////////////////////////
+// voicechat controll
 
 // TODO: remove here
 var voicech1;
 var voicech2;
 var voicech3;
 
-function start() {
+const run = () => {
 	// ikanokaiwa3は，ikanokaiwa1と2のミキサーの音声を合成して再生する
 	voicech3 = setupVoiceMixing(mixers[0], clients[0], voiceChannelIds[0], config.debug);
 	// ikanokaiwa1と2は，プレイヤーの音声をそれぞれのチャンネルのミキサーにまとめる
@@ -158,7 +168,7 @@ function start() {
 }
 
 // ikanokaiwaくんstop
-function stop() {
+const stop = () => {
 	if (voicech1) {
 		voicech1.leave();
 		voicech2.leave();
@@ -168,19 +178,37 @@ function stop() {
 		voicech3 = null;
 	}
 }
+const help = (msg) => {
+	msg.reply(helpMessage);
+};
+//////////////////////////////////////////////////////////////////////
+// command set
+const commands = {
+	"!kaiwa": help,
+	"!kaiwa help": help,
+	"!ikanokaiwa": help,
+	"!ikanokaiwa help": help,
 
+	"!kaiwa run": run,
+	"!kaiwa start": run,
+	"!ikanokaiwa run": run,
+	"!ikanokaiwa start": run,
 
+	"!kaiwa stop": stop,
+	"!kaiwa end": stop,
+	"!ikanokaiwa stop": stop,
+	"!ikanokaiwa end": stop,
+};
+// handle clients[0] only
 clients[0].on('message', msg => {
-	if (msg.content === "ikanokaiwa help") {
-		msg.reply(helpMessage);
-	} else if (msg.content === 'ikanokaiwa start') {
-		defaultLogger.info("start");
-		start();
-	} else if (msg.content === 'ikanokaiwa stop') {
-		defaultLogger.info("stop");
-		stop();
+	const func = commands[msg.content];
+	if(func) {
+		defaultLogger.info(`[Receive command] ${msg.content}`);
+		func(msg);
 	}
 });
+//////////////////////////////////////////////////////////////////////
+// start ikanokaiwa
 clients.forEach((c, index) => {
 	c.on('ready', () => defaultLogger.info('ready', index));
 	c.login(tokens[index]);
