@@ -1,6 +1,33 @@
 # ikanokaiwa
 [ikanopu](https://github.com/kamiyaowl/ikanopu)くんといっしょにお仕事がしたい
 
+# 起動方法
+
+## node.js(>= 10.15.1)で実行
+
+```
+$ node app.js
+```
+
+## Docker or Docker Compose
+
+**ビルドしたDocker Imageを公開する場合は`secret.json`を内包しないように注意してください。具体的な回避策としては`.dockerignore`に`secret.json`を記載する方法があります**
+
+以下コマンドで実行可能です。`Dockerfile`にはデフォルトでカレントディレクトリを取り込むように設定されているためローカルのファイルをそのまま移植できます。
+
+もしクラウドサービス等に乗っける場合は、secret.jsonを使わず環境変数での設定を検討してください。
+
+### Docker
+
+```
+$ docker build -t ikanokaiwa .
+$ docker run -it ikanokaiwa
+```
+### Docker Compose
+
+```
+$ docker-compose up
+```
 
 # ギルド別設定
 
