@@ -2,18 +2,9 @@
 
 const helpMessage = '\
 【ikanokaiwaの使い方】\n\
-ikanokaiwa help：このヘルプを出します\n\
-ikanokaiwa start：ikanokaiwaを始めます\n\
-ikanokaiwa stop：ikanokaiwaを終わります\n\
-ikanokaiwa channel (bot number) (channel id)：botが入室するチャンネルを設定します\n\
-    bot number：設定するbotの番号，1〜3の数字\n\
-    channle id：入室させるボイスチャンネルのid\n\
-ikanokaiwa direction (ABCDEF)：音声の転送方向を設定します\n\
-    ABCDEFにはそれぞれ0か1が当てはまり，1の場合は下記に示すように音声を転送します\n\
-    A：1→2，B：1→3\n\
-    C：2→1，D：2→3\n\
-    E：3→1，F：3→2\n\
-    ex) ikanokaiwa direction 010111：1→A，2→B，3→観戦とした設定\n\
+!kaiwa：このヘルプを出します\n\
+!kaiwa run：ikanokaiwaを始めます\n\
+!kaiwa stop：ikanokaiwaを終わります\n\
 ';
 
 // include modules
@@ -88,6 +79,7 @@ const setupVoiceMixing = (mixer, client, channelId, debug) => {
 	const vc = client.channels.resolve(channelId);
 	// join vc -> mixing stream
 	vc.join().then(connection => {
+		defaultLogger.info(`[Mixing] Join ${vc.name}`);
 		// passthrough debugprint(performance impact...)
 		if (debug) {
 			const pass = new PassThrough();
@@ -129,6 +121,7 @@ const setupVoiceCapture = (mixer, client, channelId, inputSetting) => {
 	const vc = client.channels.resolve(channelId);
 	// join vc -> wait for speaking -> capture stream -> pipe mixer
 	vc.join().then(connection => {
+		defaultLogger.info(`[Capture] Join ${vc.name}`);
 		connection.on("speaking", (user, speaking) => {
 			debugLogger.info(`[Capture] speaking:${speaking} from:${user.username}`);
 			if (speaking) {
@@ -149,35 +142,40 @@ const setupVoiceCapture = (mixer, client, channelId, inputSetting) => {
 	}).catch(errorLogger.error);
 	return vc;
 };
-
-
+// disconnect voicechat
+const leaveVoiceChannel = (vc) => {
+	if(vc && vc.name) {
+		defaultLogger.info(`Leave ${vc.name}`);
+		vc.leave();
+	}
+};
 //////////////////////////////////////////////////////////////////////
 // voicechat controll
-
-// TODO: remove here
-var voicech1;
-var voicech2;
-var voicech3;
-
+let voicechannels = [];
 const run = () => {
-	// ikanokaiwa3は，ikanokaiwa1と2のミキサーの音声を合成して再生する
-	voicech3 = setupVoiceMixing(mixers[0], clients[0], voiceChannelIds[0], config.debug);
-	// ikanokaiwa1と2は，プレイヤーの音声をそれぞれのチャンネルのミキサーにまとめる
-	voicech1 = setupVoiceCapture(mixers[1], clients[1], voiceChannelIds[1], config.mixerInputSetting);
-	voicech2 = setupVoiceCapture(mixers[2], clients[2], voiceChannelIds[2], config.mixerInputSetting);
+	voicechannels =
+		mixers.map((mixer, index) => {
+			const client = clients[index];
+			const channelId = voiceChannelIds[index];
+			// こことinputPipesをconfigurableにすれば便利だけど需要がないので実装していない
+			if (index === 0) {
+				// setup lobby mixing
+				return setupVoiceMixing(mixer, client, channelId, config.debug);
+			} else {
+				// setup voicechat capture
+				return setupVoiceCapture(mixer, client, channelId, config.mixerInputSetting);
+			}
+		});
 }
 
 // ikanokaiwaくんstop
 const stop = () => {
-	if (voicech1) {
-		voicech1.leave();
-		voicech2.leave();
-		voicech3.leave();
-		voicech1 = null;
-		voicech2 = null;
-		voicech3 = null;
-	}
+	voicechannels.forEach(vc => {
+		leaveVoiceChannel(vc);
+	});
+	voicechannels = [];
 }
+
 const help = (msg) => {
 	msg.reply(helpMessage);
 };
@@ -195,9 +193,9 @@ const commands = {
 	"!ikanokaiwa start": run,
 
 	"!kaiwa stop": stop,
-	"!kaiwa end": stop,
+	"!kaiwa leave": stop,
 	"!ikanokaiwa stop": stop,
-	"!ikanokaiwa end": stop,
+	"!ikanokaiwa leave": stop,
 };
 // handle clients[0] only
 clients[0].on('message', msg => {
