@@ -1,7 +1,6 @@
 {
     "botCount": 3,
     "secretPath": "./secret.json",
-    "setupSoundPath": "./aisatsu.mp3",
     "mixerSetting": {
         "channels": 2,
         "bitDepth": 16,
