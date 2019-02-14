@@ -10,15 +10,6 @@ $ npm installl (or yarn)
 $ node app.js
 ```
 
-## Docker or Docker Compose
-
-**ビルドしたDocker Imageを公開する場合は`secret.json`を内包しないように注意してください。具体的な回避策としては`.dockerignore`に`secret.json`を記載する方法があります**
-
-以下コマンドで実行可能です。`Dockerfile`にはデフォルトでカレントディレクトリを取り込むように設定されているためローカルのファイルをそのまま移植できます。
-
-もしクラウドサービス等に乗っける場合は、secret.jsonを使わず環境変数での設定を検討してください。
-
-
 # ギルド別設定
 
 以下の方法でサーバID、チャンネルID、bot用のトークンなど秘密情報を指定可能です。最大数は`config`の`botCount`に従います。
