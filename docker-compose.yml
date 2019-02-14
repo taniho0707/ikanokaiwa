@@ -1,2 +1,7 @@
-ikanokaiwa-app:
-  build: .
+version: "3"
+services:
+  ikanokaiwa-app:
+    build: .
+    # environment:
+      # - tokens=<token here>,<token here>,<token here>
+      # - voiceChannelIds=<id here>,<id here>,<id here>

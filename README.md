@@ -17,17 +17,6 @@ $ node app.js
 
 もしクラウドサービス等に乗っける場合は、secret.jsonを使わず環境変数での設定を検討してください。
 
-### Docker
-
-```
-$ docker build -t ikanokaiwa .
-$ docker run -it ikanokaiwa
-```
-### Docker Compose
-
-```
-$ docker-compose up
-```
 
 # ギルド別設定
 
@@ -72,6 +61,7 @@ $ docker-compose up
 |-----|-------|------|
 |botCount|ハンドルするボットの数(tokens, voiceChannelIdsと数を一致させてください)|3
 |secretPath|先のギルド別設定の保存場所。空白や存在しないパスの場合は環境変数から読み出します。|`./secret.json`
+|startupSoundPath|ボイスチャット参加時に流す音声|`./startup.mp3`
 |mixerSetting|音声ミキサーの設定です| [Object]
 |mixerInputSetting|音声ミキサーの入力設定です| [Object]
 |debug|開発者向けの余計な分岐を実行する場合はtrue|true

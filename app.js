@@ -120,7 +120,7 @@ const setupVoiceMixing = (mixer, client, channelId, debug, soundPath) => {
 				errorLogger.error(`[Mixing] dispatcher error:${error}`);
 			});
 		});
-	}).catch(errorLogger.error);
+	}).catch(errorLogger);
 	return vc;
 };
 
@@ -151,7 +151,7 @@ const setupVoiceCapture = (mixer, client, channelId, inputSetting, soundPath) =>
 				}
 			});
 		});
-	}).catch(errorLogger.error);
+	}).catch(errorLogger);
 	return vc;
 };
 // disconnect voicechat
@@ -220,7 +220,7 @@ clients[0].on('message', msg => {
 //////////////////////////////////////////////////////////////////////
 // start ikanokaiwa
 clients.forEach((c, index) => {
-	c.on('ready', () => defaultLogger.info('ready', index));
+	c.on('ready', () => defaultLogger.info(`bot ${index} ready`));
 	c.login(tokens[index]);
-	defaultLogger.info('login', index);
+	defaultLogger.info(`bot ${index} login`);
 });
