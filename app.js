@@ -20,13 +20,20 @@ ikanokaiwa direction (ABCDEF)：音声の転送方向を設定します\n\
 const fs = require('fs');
 const path = require('path');
 const config = require('config');
+const log4js = require('log4js');
 const Discord = require('discord.js');
 const AudioMixer = require('audio-mixer');
 const { PassThrough } = require('stream');
 
+// setup log4js
+log4js.configure(config.log4js);
+const defaultLogger = log4js.getLogger('default');
+const errorLogger = log4js.getLogger('error');
+defaultLogger.info('run ikanokaiwa');
+
 // botCount validation
 if(config.botCount < 2) {
-	console.error('config.botCount < 2');
+	errorLogger.error('config.botCount < 2');
 	process.exit(1);
 }
 // setup Base Modules
@@ -45,7 +52,7 @@ const inputPipes =
 let tokens = [];
 let voiceChannelIds = [];
 if (fs.existsSync(config.secretPath)) {
-	const secret = require(config.secretPath);
+	const secret = JSON.parse(fs.readFileSync(config.secretPath));
 	tokens = secret.tokens;
 	voiceChannelIds = secret.voiceChannelIds;
 } else {
@@ -57,12 +64,12 @@ if (fs.existsSync(config.secretPath)) {
 }
 // secrets validation
 if (tokens.length < config.botCount) {
-	console.error('tokens.length < config.botCount');
+	errorLogger.error('tokens.length < config.botCount');
 	process.exit(1);
 
 }
 if (voiceChannelIds.length < config.botCount) {
-	console.error('voiceChannelIds.length < config.botCount');
+	errorLogger.error('voiceChannelIds.length < config.botCount');
 	process.exit(1);
 }
 
@@ -91,36 +98,36 @@ function start() {
 				var pass = new PassThrough();
 				mixers[0].pipe(pass);
 				pass.on("data", (chunk) => {
-					console.log("*pass: " + chunk.length);
+					defaultLogger.info("*pass: " + chunk.length);
 					pass.resume();
 				});
 	
 				const pcm = fs.createWriteStream("./out.pcm");
 				mixers[0].pipe(pcm);
 				mixers[0].on("data", (chunk) => {
-					console.log("*mixer: " + chunk.length);
+					defaultLogger.info("*mixer: " + chunk.length);
 					mixers[0].resume();
 				});
-				console.log("mixer3 connected to 3");
+				defaultLogger.info("mixer3 connected to 3");
 	
 				var dispatcher = connection3.play(mixers[0], {
 					type: 'converted',
 					bitrate: '48'
 				});
 				dispatcher.on("start", () => {
-					console.log("*dispatcher start");
+					defaultLogger.info("*dispatcher start");
 				});
 				dispatcher.on("speaking", (value) => {
-					console.log("*dispatcher speaking: " + value);
+					defaultLogger.info("*dispatcher speaking: " + value);
 				});
 				dispatcher.on("debug", (info) => {
-					console.log("*dispatcher debug: " + info);
+					defaultLogger.info("*dispatcher debug: " + info);
 				});
 				dispatcher.on("error", (error) => {
-					console.log("*dispatcher error: " + error);
+					defaultLogger.info("*dispatcher error: " + error);
 				});
 			});
-		}).catch(console.err);
+		}).catch(errorLogger.error);
 
 
 		// ikanokaiwa1と2は，プレイヤーの音声をそれぞれのチャンネルのミキサーにまとめる
@@ -130,7 +137,7 @@ function start() {
 		const dispatcher = connection1.play(config.setupSoundPath);
 		dispatcher.on("end", () => {
 			connection1.on("speaking", (user, speaking) => {
-				console.log("@speaking " + speaking + " by " + user.username);
+				defaultLogger.info("@speaking " + speaking + " by " + user.username);
 				if (speaking) {
 					const input1 = mixers[1].input({
 						channels: 2,
@@ -150,7 +157,7 @@ function start() {
 				}
 			});
 		});
-	}).catch(console.err);
+	}).catch(errorLogger.error);
 
 	voicech2 = clients[2].channels.resolve(voiceChannelIds[2]);
 	voicech2.join().then(con => {
@@ -158,7 +165,7 @@ function start() {
 		const dispatcher = connection2.play(config.setupSoundPath);
 		dispatcher.on("end", () => {
 			connection2.on("speaking", (user, speaking) => {
-				console.log("@speaking " + speaking + " by " + user.username);
+				defaultLogger.info("@speaking " + speaking + " by " + user.username);
 				if (speaking) {
 					const input2 = mixers[2].input({
 						channels: 2,
@@ -177,7 +184,7 @@ function start() {
 				}
 			});
 		});
-	}).catch(console.err);
+	}).catch(errorLogger.error);
 }
 
 // ikanokaiwaくんstop
@@ -197,15 +204,15 @@ clients[0].on('message', msg => {
 	if (msg.content === "ikanokaiwa help") {
 		msg.reply(helpMessage);
 	} else if (msg.content === 'ikanokaiwa start') {
-		console.log("start");
+		defaultLogger.info("start");
 		start();
 	} else if (msg.content === 'ikanokaiwa stop') {
-		console.log("stop");
+		defaultLogger.info("stop");
 		stop();
 	}
 });
 clients.forEach((c, index) => {
-	c.on('ready', () => console.log('ready', index));
+	c.on('ready', () => defaultLogger.info('ready', index));
 	c.login(tokens[index]);
-	console.log('login', index);
+	defaultLogger.info('login', index);
 });

@@ -22,9 +22,10 @@
   "dependencies": {
     "@discordjs/uws": "^11.149.1",
     "audio-mixer": "github:tokoro10g/Audio-Mixer#feature-softclip",
+    "config": "^3.0.1",
     "discord.js": "github:discordjs/discord.js",
     "erlpack": "github:discordapp/erlpack",
-    "config": "^3.0.1",
+    "log4js": "^4.0.2",
     "node-opus": "^0.3.1"
   }
 }

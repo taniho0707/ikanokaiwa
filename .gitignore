@@ -64,3 +64,4 @@ typings/
 secret.json
 .vscode
 *.pcm
+*.log

@@ -14,6 +14,46 @@
         "sampleRate": 48000,
         "volume": 100
     },
-    "recordLobby": true,
-    "recordOthers": true
+    "log4js": {
+        "appenders": {
+            "info": {
+                "type": "file",
+                "filename": "info.log",
+                "maxLogSize": 10485760,
+                "backups": 3,
+                "compress": true
+            },
+            "error": {
+                "type": "file",
+                "filename": "error.log",
+                "maxLogSize": 10485760,
+                "backups": 3,
+                "compress": true
+            },
+            "console": {
+                "type": "console"
+            },
+            "stdout": {
+                "type": "stdout"
+            }
+        },
+        "categories": {
+            "default": {
+                "appenders": [
+                    "info",
+                    "console",
+                    "stdout"
+                ],
+                "level": "INFO"
+            },
+            "error": {
+                "appenders": [
+                    "error",
+                    "console",
+                    "stdout"
+                ],
+                "level": "WARN"
+            }
+        }
+    }
 }
