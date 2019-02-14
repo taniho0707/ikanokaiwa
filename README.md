@@ -6,6 +6,7 @@
 ## node.js(>= 10.15.1)で実行
 
 ```
+$ npm installl (or yarn)
 $ node app.js
 ```
 
