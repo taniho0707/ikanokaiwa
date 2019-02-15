@@ -2,8 +2,9 @@
   "name": "ikanokaiwa",
   "version": "0.0.1",
   "description": "ikanokaiwa",
-  "main": "ikanokaiwa.js",
+  "main": "app.js",
   "scripts": {
+    "start": "node app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -22,8 +23,10 @@
   "dependencies": {
     "@discordjs/uws": "^11.149.1",
     "audio-mixer": "github:tokoro10g/Audio-Mixer#feature-softclip",
+    "config": "^3.0.1",
     "discord.js": "github:discordjs/discord.js",
     "erlpack": "github:discordapp/erlpack",
+    "log4js": "^4.0.2",
     "node-opus": "^0.3.1"
   }
 }
