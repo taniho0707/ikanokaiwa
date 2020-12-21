@@ -1,0 +1,15 @@
+[Unit]
+Description=ikanokaiwa
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+Environment=PATH=/usr/bin:/usr/local/bin
+WorkingDirectory=/opt/ikanokaiwa
+ExecStart=/opt/ikanokaiwa/app.js
+
+[Install]
+WantedBy=multi-user.target

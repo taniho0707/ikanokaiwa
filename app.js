@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 'use strict';
 
 const helpMessage = '\
@@ -73,6 +74,16 @@ if (voiceChannelIds.length < config.botCount) {
 	errorLogger.error('voiceChannelIds.length < config.botCount');
 	process.exit(1);
 }
+
+const cleanUp = () => {
+	clients.map((c) => {
+		c.destroy();
+	});
+	process.exit(0);
+};
+
+process.on('SIGTERM', cleanUp);
+process.on('SIGINT', cleanUp);
 
 //////////////////////////////////////////////////////////////////////
 // core function

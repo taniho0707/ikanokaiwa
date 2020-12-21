@@ -1,7 +1,7 @@
 {
     "botCount": 3,
-    "secretPath": "./secret.json",
-    "startupSoundPath": "./startup.mp3",
+    "secretPath": "secret.json",
+    "startupSoundPath": "startup.mp3",
     "mixerSetting": {
         "channels": 2,
         "bitDepth": 16,
