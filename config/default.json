@@ -14,7 +14,7 @@
         "sampleRate": 48000,
         "volume": 100
     },
-    "debug": true,
+    "debug": false,
     "log4js": {
         "appenders": {
             "info": {

@@ -24,7 +24,7 @@ log4js.configure(config.log4js);
 const defaultLogger = log4js.getLogger('default');
 const debugLogger = log4js.getLogger('debug');
 const errorLogger = log4js.getLogger('error');
-process.on('unhandledRejection', errorLogger.error); // async func stacktrace
+process.on('unhandledRejection', errorLogger.error.bind(errorLogger)); // async func stacktrace
 defaultLogger.info('run ikanokaiwa');
 
 // botCount validation
@@ -68,7 +68,6 @@ if (fs.existsSync(config.secretPath)) {
 if (tokens.length < config.botCount) {
 	errorLogger.error('tokens.length < config.botCount');
 	process.exit(1);
-
 }
 if (voiceChannelIds.length < config.botCount) {
 	errorLogger.error('voiceChannelIds.length < config.botCount');
@@ -86,7 +85,8 @@ const setupVoiceMixing = (mixer, client, channelId, debug, soundPath) => {
 	// join vc -> mixing stream
 	vc.join().then(connection => {
 		// play startup sound
-		connection.play(soundPath).on('end', () => {
+		connection.play(soundPath).on('speaking', (value) => {
+			if(value) return;
 			defaultLogger.info(`[Mixing] Join ${vc.name}`);
 			// passthrough debugprint(performance impact...)
 			if (debug) {
@@ -110,12 +110,12 @@ const setupVoiceMixing = (mixer, client, channelId, debug, soundPath) => {
 			dispatcher.on("start", () => {
 				debugLogger.info(`[Mixing] dispatcher start`);
 			});
-			dispatcher.on("speaking", (value) => {
-				debugLogger.info(`[Mixing] dispatcher sepeaking:${value}`);
-			});
-			dispatcher.on("debug", (info) => {
-				debugLogger.info(`[Mixing] dispatcher debug:${info}`);
-			});
+			// dispatcher.on("speaking", (value) => {
+			// 	debugLogger.info(`[Mixing] dispatcher speaking:${value}`);
+			// });
+			// dispatcher.on("debug", (info) => {
+			// 	debugLogger.info(`[Mixing] dispatcher debug:${info}`);
+			// });
 			dispatcher.on("error", (error) => {
 				errorLogger.error(`[Mixing] dispatcher error:${error}`);
 			});
@@ -131,11 +131,12 @@ const setupVoiceCapture = (mixer, client, channelId, inputSetting, soundPath) =>
 	// join vc -> wait for speaking -> capture stream -> pipe mixer
 	vc.join().then(connection => {
 		// play startup sound
-		connection.play(soundPath).on('end', () => {
+		connection.play(soundPath).on('speaking', (value) => {
+			if(value) return;
 			defaultLogger.info(`[Capture] Join ${vc.name}`);
 			connection.on("speaking", (user, speaking) => {
-				debugLogger.info(`[Capture] speaking:${speaking} from:${user.username}`);
-				if (speaking) {
+				debugLogger.info(`[Capture] speaking:${speaking.bitfield} from:${user.username}`);
+				if (speaking.bitfield > 0) {
 					const input = mixer.input(inputSetting);
 					input.on("finish", () => {
 						mixer.removeInput(input);
