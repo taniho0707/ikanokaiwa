@@ -3,12 +3,34 @@
 
 # 起動方法
 
-## node.js(>= 10.15.1)で実行
+## node.js(== 12.20.0)で実行
 
 ```
-$ npm installl (or yarn)
+$ sudo npm -g install n
+$ sudo n 12.20.0
+$ sudo npm -g install yarn
+$ yarn install
 $ node app.js
 ```
+
+# Discord Botの準備
+
+Discord appをbotの個数分作成して、それぞれに対してbot tokenを取得します。
+
+参考:
+https://github.com/reactiflux/discord-irc/wiki/Creating-a-discord-bot-&-getting-a-token
+
+Botのパーミッションには、
+- General
+  - View Channels
+- Text
+  - Send Messages
+  - Read Message History
+- Voice
+  - Connect
+  - Speak
+  - Use Voice Activity
+を指定してください。
 
 # ギルド別設定
 
