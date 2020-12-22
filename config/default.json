@@ -15,6 +15,7 @@
         "volume": 100
     },
     "debug": false,
+    "startupTimeout": 20000,
     "log4js": {
         "appenders": {
             "info": {
