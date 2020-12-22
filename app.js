@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 'use strict';
 
 const helpMessage = '\
@@ -15,6 +16,7 @@ const log4js = require('log4js');
 const Discord = require('discord.js');
 const AudioMixer = require('audio-mixer');
 const { PassThrough } = require('stream');
+const isReachable = require('is-reachable');
 
 //////////////////////////////////////////////////////////////////////
 // modules setup
@@ -73,6 +75,16 @@ if (voiceChannelIds.length < config.botCount) {
 	errorLogger.error('voiceChannelIds.length < config.botCount');
 	process.exit(1);
 }
+
+const cleanUp = () => {
+	clients.map((c) => {
+		c.destroy();
+	});
+	process.exit(0);
+};
+
+process.on('SIGTERM', cleanUp);
+process.on('SIGINT', cleanUp);
 
 //////////////////////////////////////////////////////////////////////
 // core function
@@ -220,8 +232,19 @@ clients[0].on('message', msg => {
 });
 //////////////////////////////////////////////////////////////////////
 // start ikanokaiwa
-clients.forEach((c, index) => {
-	c.on('ready', () => defaultLogger.info(`bot ${index} ready`));
-	c.login(tokens[index]);
-	defaultLogger.info(`bot ${index} login`);
-});
+(async () => {
+	const online = await isReachable('discord.com', {
+		timeout: config.startupTimeout
+	});
+	if(online) {
+		clients.forEach((c, index) => {
+			c.on('ready', () => defaultLogger.info(`bot ${index} ready`));
+			c.on('error', (e) => { errorLogger.info(e); process.exit(1); });
+			c.login(tokens[index]);
+			defaultLogger.info(`bot ${index} login`);
+		});
+	} else {
+		errorLogger.info('Could not reach the discord service.');
+		process.exit(1);
+	}
+})();

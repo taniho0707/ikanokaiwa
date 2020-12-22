@@ -25,6 +25,7 @@
     "config": "3.0.1",
     "discord.js": "^12.5.1",
     "erlpack": "discord/erlpack",
+    "is-reachable": "^5.0.0",
     "log4js": "^4.0.2",
     "opusscript": "^0.0.7"
   }
